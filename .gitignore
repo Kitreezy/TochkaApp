@@ -1,0 +1,108 @@
+# .gitignore для проекта Tochka
+
+# Xcode
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+*.xcuserdata
+*.xcuserdatad
+
+# Xcode Workspace
+*.xcworkspace/contents.xcworkspacedata
+*.xcworkspace/xcuserdata/
+
+# Build products
+build/
+DerivedData/
+*.ipa
+*.app
+*.dSYM.zip
+*.dSYM
+
+# Tuist
+Derived/
+.tuist-bin
+.tuist-version
+
+# Swift Package Manager
+.build/
+Packages/
+Package.pins
+Package.resolved
+*.xcodeproj
+.swiftpm/
+
+# Firebase
+GoogleService-Info.plist
+google-services.json
+
+# Secrets
+secrets.xcconfig
+.env
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# CocoaPods (если будем использовать)
+Pods/
+*.podspec
+*.podspec.json
+
+# Carthage (если будем использовать)
+Carthage/Build
+Carthage/Checkouts
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Code Injection
+iOSInjectionProject/
+
+# SwiftLint
+.swiftlint.yml.tmp
+
+# IDE
+.vscode/
+.idea/
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+
+# App Store Connect API Key
+AuthKey_*.p8
+
+# Provisioning profiles
+*.mobileprovision
+*.provisionprofile
+
+# Certificates
+*.cer
+*.p12
+*.p8

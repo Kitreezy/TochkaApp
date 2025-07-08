@@ -1,0 +1,154 @@
+# .swiftlint.yml
+# Конфигурация SwiftLint для проекта Tochka
+
+# Директории для анализа
+included:
+  - Tochka
+  - Modules
+
+# Исключенные директории
+excluded:
+  - Derived
+  - .build
+  - vendor
+  - Carthage
+  - Tests/LinuxMain.swift
+
+# Отключенные правила
+disabled_rules:
+  - trailing_whitespace # Мы используем SwiftFormat для этого
+  - line_length # Будем использовать более гибкое правило
+
+# Включенные opt-in правила
+opt_in_rules:
+  - array_init
+  - attributes
+  - closure_end_indentation
+  - closure_spacing
+  - collection_alignment
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - contains_over_first_not_nil
+  - convenience_type
+  - discouraged_object_literal
+  - empty_collection_literal
+  - empty_count
+  - empty_string
+  - enum_case_associated_values_count
+  - explicit_init
+  - extension_access_modifier
+  - fallthrough
+  - fatal_error_message
+  - file_header
+  - first_where
+  - force_unwrapping
+  - function_default_parameter_at_end
+  - identical_operands
+  - implicit_return
+  - joined_default_parameter
+  - last_where
+  - legacy_random
+  - literal_expression_end_indentation
+  - lower_acl_than_parent
+  - modifier_order
+  - nimble_operator
+  - nslocalizedstring_key
+  - number_separator
+  - object_literal
+  - operator_usage_whitespace
+  - overridden_super_call
+  - override_in_extension
+  - pattern_matching_keywords
+  - prefer_self_type_over_type_of_self
+  - prefixed_toplevel_constant
+  - prohibited_interface_builder
+  - prohibited_super_call
+  - quick_discouraged_call
+  - quick_discouraged_focused_test
+  - quick_discouraged_pending_test
+  - reduce_into
+  - redundant_nil_coalescing
+  - redundant_type_annotation
+  - required_enum_case
+  - single_test_class
+  - sorted_first_last
+  - static_operator
+  - strong_iboutlet
+  - toggle_bool
+  - unavailable_function
+  - unneeded_parentheses_in_closure_argument
+  - unowned_variable_capture
+  - untyped_error_in_catch
+  - vertical_parameter_alignment_on_call
+  - vertical_whitespace_closing_braces
+  - vertical_whitespace_opening_braces
+  - xct_specific_matcher
+  - yoda_condition
+
+# Настройки конкретных правил
+line_length:
+  warning: 120
+  error: 140
+  ignores_urls: true
+  ignores_function_declarations: true
+  ignores_comments: true
+
+function_body_length:
+  warning: 60
+  error: 100
+
+type_body_length:
+  warning: 300
+  error: 400
+
+file_length:
+  warning: 400
+  error: 500
+
+type_name:
+  min_length: 3
+  max_length:
+    warning: 40
+    error: 50
+
+identifier_name:
+  min_length: 3
+  max_length:
+    warning: 40
+    error: 50
+  excluded:
+    - id
+    - url
+    - URL
+    - x
+    - y
+    - z
+
+# Настройка заголовков файлов
+file_header:
+  required_pattern: |
+                    \/\/
+                    \/\/ .*\.swift
+                    \/\/ Tochka
+                    \/\/
+                    \/\/ Created by .* on \d{1,2}\/\d{1,2}\/\d{4}\.
+                    \/\/
+
+# Настройка отступов
+indentation: 4
+
+# Кастомные правила
+custom_rules:
+  # Обязательные комментарии для MARK
+  mark_comment:
+    name: "MARK Comment"
+    regex: '\/\/ MARK: - '
+    message: "Use MARK comments to organize code"
+    severity: warning
+    
+  # Запрет на использование print в production коде
+  no_print:
+    name: "No Print"
+    regex: '\bprint\('
+    message: "Use proper logging instead of print"
+    severity: warning
