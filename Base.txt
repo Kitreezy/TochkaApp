@@ -1,0 +1,2326 @@
+Activity ---
+
+import Foundation
+import CoreLocation
+
+public struct Activity: Codable, Identifiable {
+    public let id: String
+    public let title: String
+    public let description: String
+    public let category: ActivityCategory
+    public let location: ActivityLocation
+    public let dateTime: Date
+    public let creatorId: String
+    public let maxParticipants: Int?
+    public let participantIds: [String] // User IDs
+    public let isActive: Bool
+    public let createdAt: Date
+    public let updatedAt: Date
+
+    public init(id: String = UUID().uuidString,
+                title: String,
+                description: String,
+                category: ActivityCategory,
+                location: ActivityLocation,
+                dateTime: Date,
+                creatorId: String,
+                maxParticipants: Int? = nil,
+                participantIds: [String] = [],
+                isActive: Bool = true,
+                createdAt: Date = Date(),
+                updatedAt: Date)
+    {
+        self.id = id
+        self.title = title
+        self.description = description
+        self.category = category
+        self.location = location
+        self.dateTime = dateTime
+        self.creatorId = creatorId
+        self.maxParticipants = maxParticipants
+        self.participantIds = participantIds
+        self.isActive = isActive
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+    
+    public var iscREATOR: Bool {
+        false
+    }
+    
+    public var hasSpaceLeft: Bool {
+        guard let maxParticipants = maxParticipants else {
+            return true 
+        }
+        return participantIds.count < maxParticipants
+    }
+}
+
+ActivityLocation ---
+
+import Foundation
+import CoreLocation
+
+public struct ActivityLocation: Codable {
+    public let name: String
+    public let address: String
+    public let latitude: Double
+    public let longitude: Double
+
+    public init(name: String,
+                address: String,
+                latitude: Double,
+                longitude: Double)
+    {
+        self.name = name
+        self.address = address
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+    
+    public init(name: String,
+                address: String,
+                coordinate: CLLocationCoordinate2D) {
+        self.name = name
+        self.address = address
+        self.latitude = coordinate.latitude
+        self.longitude = coordinate.longitude
+    }
+    
+    public var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+    
+    public var clLocation: CLLocation {
+        CLLocation(latitude: latitude, longitude: longitude)
+    }
+}
+
+
+ChatMessage --- 
+import Foundation
+
+public struct ChatMessage: Codable, Identifiable {
+    public let id: String
+    public let activityId: String
+    public let senderId: String
+    public let senderName: String
+    public let text: String
+    public let imageURL: String?
+    public let timestamp: Date
+    public let type: MessageType
+
+    public enum MessageType: String, Codable {
+        case text
+        case image
+        case system
+    }
+
+    public init(id: String = UUID().uuidString,
+                activityId: String,
+                senderId: String,
+                senderName: String,
+                text: String,
+                imageURL: String? = nil,
+                timestamp: Date = Date(),
+                type: MessageType = .text)
+    {
+        self.id = id
+        self.activityId = activityId
+        self.senderId = senderId
+        self.senderName = senderName
+        self.text = text
+        self.imageURL = imageURL
+        self.timestamp = timestamp
+        self.type = type
+    }
+}
+
+
+User ---
+
+import Foundation
+import FirebaseAuth
+
+public struct User: Codable, Identifiable {
+    public let id: String
+    public let email: String
+    public let displayName: String
+    public let photoURL: String?
+    public let createdAt: Date
+    public let updateAt: Date
+    public let rating: Double
+
+    public init(id: String,
+                email: String,
+                displayName: String,
+                photoURL: String? = nil,
+                createdAt: Date = Date(),
+                updateAt: Date = Date(),
+                rating: Double = 0.0)
+    {
+        self.id = id
+        self.email = email
+        self.displayName = displayName
+        self.photoURL = photoURL
+        self.createdAt = createdAt
+        self.updateAt = updateAt
+        self.rating = rating
+    }
+    
+    public init(from firebaseUser: FirebaseAuth.User) {
+        self.id = firebaseUser.uid
+        self.email = firebaseUser.email ?? ""
+        self.displayName = firebaseUser.displayName ?? ""
+        self.photoURL = firebaseUser.photoURL?.absoluteString
+        self.createdAt = firebaseUser.metadata.creationDate ?? Date()
+        self.updateAt = Date()
+        self.rating = 0.0
+    }
+}
+
+ActivityCategory --- 
+import Foundation
+
+public enum ActivityCategory: String, CaseIterable, Codable {
+    case meeting = "meeting"
+    case concert = "concert"
+    case boardGames = "board_games"
+    case sport = "sport"
+    case food = "food"
+    case culture = "culture"
+    case other = "other"
+
+    public var displayName: String {
+        switch self {
+        case .meeting: return "Встреча"
+        case .concert: return "Концерт"
+        case .boardGames: return "Настольные игры"
+        case .sport: return "Спорт"
+        case .food: return "Еда"
+        case .culture: return "Культура"
+        case .other: return "Другое"
+        }
+    }
+
+    public var emoji: String {
+        switch self {
+        case .meeting: return "🤝"
+        case .concert: return "🎵"
+        case .boardGames: return "🎲"
+        case .sport: return "⚽️"
+        case .food: return "🍕"
+        case .culture: return "🎭"
+        case .other: return "📍"
+        }
+    }
+}
+
+ActivityRepository ---
+
+import Combine
+import Foundation
+
+public protocol ActivityRepository {
+    func createActivity(_ activity: Activity) -> AnyPublisher<Void, Error>
+    func getActivitesNearLocation(latitude: Double, longitude: Double, radius: Double) -> AnyPublisher<[Activity], Error>
+    func getActivityById(_ id: String) -> AnyPublisher<Activity?, Error>
+    func joinActivity(_ activityId: String, userId: String) -> AnyPublisher<Void, Error>
+    func leaveActivity(_ activityId: String, userId: String) -> AnyPublisher<Void, Error>
+}
+
+ChatRepository --- 
+
+import Combine
+import Foundation
+
+public protocol CChatRepository {
+    func sendMessage(_ message: ChatMessage) -> AnyPublisher<Void, Error>
+    func getMessages(for activityId: String) -> AnyPublisher<[ChatMessage], Error>
+    func observeMessages(for activityId: String) -> AnyPublisher<ChatMessage, Error>
+}
+
+Constants ---
+
+import Foundation
+
+public enum Constants {
+    public enum UI {
+        public static let cornerRadius: CGFloat = 12
+        public static let borderWidth: CGFloat = 1
+        public static let shadowRadius: CGFloat = 4
+        public static let animationDuration: Double = 0.3
+    }
+
+    public enum Map {
+        public static let defaultRadius: Double = 5000
+        public static let maxRadius: Double = 50000
+    }
+
+    public enum Activity {
+        public static let maxTitleLength = 50
+        public static let maxDesctiptionLength = 200
+        public static let maxParticipants = 10
+    }
+}
+
+ErrorTypes ---
+
+import Foundation
+
+public enum TochkaError: Error, LocalizedError {
+    case networkError(String)
+    case authenticationRequired
+    case permissionDenied
+    case invalidData
+    case activityFull
+    case userNotFound
+    case activityNotFound
+
+    public var errorDescription: String? {
+        switch self {
+        case let .networkError(message):
+            return "Ошибка сети: \(message)"
+
+        case .authenticationRequired:
+            return "Авторизация необходима"
+
+        case .permissionDenied:
+            return "Недостаточно прав"
+
+        case .invalidData:
+            return "Некорректсные данные"
+
+        case .activityFull:
+            return "Активность заполнена"
+
+        case .userNotFound:
+            return "Пользователь не найден"
+
+        case .activityNotFound:
+            return "Активность не найдена"
+        }
+    }
+}
+
+
+Extensions ---
+
+import Foundation
+import UIKit
+
+public extension Date {
+    var timeAgoDisplay: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter.localizedString(for: self, relativeTo: Date())
+    }
+
+    var shortTimeFormat: String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter.string(from: self)
+    }
+
+    var dayAndTimeFormat: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd MMMM, HH:mm"
+        formatter.locale = Locale(identifier: "ru_RU")
+        return formatter.string(from: self)
+    }
+}
+
+public extension String {
+    var validEmail: Bool {
+        let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
+        let emailPred = NSPredicate(format: "SELF MATCHES %@", emailRegEx)
+        return emailPred.evaluate(with: self)
+    }
+
+    var trimmed: String {
+        trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}
+
+UserRepository ---
+
+import Combine
+import Foundation
+
+public protocol UserRepository {
+    func getCurrentUser() -> AnyPublisher<User?, Error>
+    func updateUser(_ user: User) -> AnyPublisher<Void, Error>
+    func getUserById(_ id: String) -> AnyPublisher<Core.User?, any Error>
+}
+
+ViewModelsBase ---
+
+import Combine
+import SwiftUI
+
+@MainActor
+open class BaseViewModel: ObservableObject {
+    @Published public var isLoading = false
+    @Published public var errorMessage: String?
+
+    public var cancellables = Set<AnyCancellable>()
+
+    public init() {}
+
+    public func showError(_ error: Error) {
+        errorMessage = error.localizedDescription
+    }
+
+    public func clearError() {
+        errorMessage = nil
+    }
+}
+
+AuthManager ---
+
+import Foundation
+import Combine
+import FirebaseAuth
+
+public class AuthManager: ObservableObject {
+    @Published public var isAuthenticated = false
+    @Published public var currentUser: FirebaseAuth.User?
+    @Published public var isLoading = false
+    @Published public var errorMessage: String?
+    
+    public init() {
+        // Слушаем изменения авторизации
+        Auth.auth().addStateDidChangeListener { [weak self] _, user in
+            DispatchQueue.main.async {
+                self?.currentUser = user
+                self?.isAuthenticated = user != nil
+            }
+        }
+    }
+    
+    public func checkAuthenticationStatus() {
+        currentUser = Auth.auth().currentUser
+        isAuthenticated = currentUser != nil
+    }
+    
+    public func signIn(email: String, password: String) {
+        isLoading = true
+        errorMessage = nil
+        
+        Auth.auth().signIn(withEmail: email, password: password) { [weak self] result, error in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                if let error = error {
+                    self?.errorMessage = error.localizedDescription
+                } else {
+                    self?.currentUser = result?.user
+                    self?.isAuthenticated = true
+                }
+            }
+        }
+    }
+    
+    public func signUp(email: String, password: String) {
+        isLoading = true
+        errorMessage = nil
+        
+        Auth.auth().createUser(withEmail: email, password: password) { [weak self] result, error in
+            DispatchQueue.main.async {
+                self?.isLoading = false
+                if let error = error {
+                    self?.errorMessage = error.localizedDescription
+                } else {
+                    self?.currentUser = result?.user
+                    self?.isAuthenticated = true
+                }
+            }
+        }
+    }
+    
+    public func signOut() {
+        do {
+            try Auth.auth().signOut()
+            currentUser = nil
+            isAuthenticated = false
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    public func clearError() {
+        errorMessage = nil
+    }
+}
+
+
+FirebaseManager ---
+
+import Foundation
+import FirebaseCore
+
+public class FirebaseManager {
+    public static let shared = FirebaseManager()
+    
+    private init() {}
+    
+    public func configure() {
+        FirebaseApp.configure()
+        print("🔥 Firebase инициализирован из Core модуля")
+    }
+}
+
+
+AppCoordinator ---
+
+import Core
+import SwiftUI
+
+@MainActor
+class AppCoordinator: ObservableObject {
+    @Published var isAuthenticated = false
+    @Published var currentUser: User?
+
+    func checkAuthenticationStatus() {
+        isAuthenticated = false
+    }
+
+    func signIn(user: User) {
+        currentUser = user
+        isAuthenticated = true
+    }
+
+    func signOut() {
+        currentUser = nil
+        isAuthenticated = false
+    }
+}
+
+
+AuthenticationView ---
+
+import SwiftUI
+import Core
+
+struct AuthenticationView: View {
+    @EnvironmentObject var authManager: AuthManager
+    @State private var email = ""
+    @State private var password = ""
+    @State private var isSignUp = false
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 32) {
+                    Spacer()
+                    
+                    // Logo Section
+                    VStack(spacing: 16) {
+                        Image(systemName: "location.circle.fill")
+                            .font(.system(size: 80))
+                            .foregroundColor(.blue)
+                        
+                        Text("Tochka")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            
+                        Text("Находи интересные активности рядом с тобой")
+                            .font(.body)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                    
+                    Spacer()
+                    
+                    // Auth Form
+                    VStack(spacing: 20) {
+                        VStack(spacing: 16) {
+                            TextField("Email", text: $email)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                                .keyboardType(.emailAddress)
+                            
+                            SecureField("Пароль", text: $password)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                        }
+                        
+                        Button(action: {
+                            authManager.clearError()
+                            if isSignUp {
+                                authManager.signUp(email: email, password: password)
+                            } else {
+                                authManager.signIn(email: email, password: password)
+                            }
+                        }) {
+                            HStack {
+                                if authManager.isLoading {
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                        .foregroundColor(.white)
+                                }
+                                Text(isSignUp ? "Зарегистрироваться" : "Войти")
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                        }
+                        .disabled(email.isEmpty || password.isEmpty || authManager.isLoading)
+                        
+                        Button(action: {
+                            isSignUp.toggle()
+                            authManager.clearError()
+                        }) {
+                            Text(isSignUp ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться")
+                        }
+                        .foregroundColor(.blue)
+                        .disabled(authManager.isLoading)
+                    }
+                    .padding(.horizontal, 32)
+                    
+                    // Error Message
+                    if let errorMessage = authManager.errorMessage {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .font(.caption)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                            .padding(.top, 8)
+                    }
+                    
+                    Spacer()
+                    
+                    // Firebase Status
+                    Text("🔥 Firebase интеграция")
+                        .font(.caption2)
+                        .foregroundColor(.orange)
+                        .padding(.bottom, 32)
+                }
+            }
+            .navigationTitle(isSignUp ? "Регистрация" : "Вход")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+}
+
+
+ContentView ---
+
+import SwiftUI
+import Core
+
+public struct ContentView: View {
+    @StateObject private var authManager = AuthManager()
+
+    public var body: some View {
+        Group {
+            if authManager.isAuthenticated {
+                MainTabView()
+                    .environmentObject(authManager)
+            } else {
+                AuthenticationView()
+                    .environmentObject(authManager)
+            }
+        }
+        .onAppear {
+            authManager.checkAuthenticationStatus()
+        }
+    }
+}
+
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
+}
+
+
+MainTabView ---
+
+import SwiftUI
+
+struct MainTabView: View {
+    var body: some View {
+        TabView {
+            MapView()
+                .tabItem {
+                    Image(systemName: "map")
+                    Text("Карта")
+                }
+
+            ActivityListView()
+                .tabItem {
+                    Image(systemName: "list.bullet")
+                    Text("Активности")
+                }
+
+            ProfileView()
+                .tabItem {
+                    Image(systemName: "person")
+                    Text("Профиль")
+                }
+        }
+    }
+}
+
+
+PlaceholderViews ---
+
+import SwiftUI
+import Core
+
+struct MapView: View {
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Image(systemName: "map.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(.blue)
+                
+                Text("Карта")
+                    .font(.title)
+                
+                Text("Здесь будет карта с активностями")
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                
+                Button("Создать активность") {
+                    // TODO: Переход к созданию активности
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .navigationTitle("Карта")
+        }
+    }
+}
+
+struct ActivityListView: View {
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Image(systemName: "list.bullet.circle.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(.green)
+                
+                Text("Активности")
+                    .font(.title)
+                
+                Text("Список ближайших активностей")
+                    .foregroundColor(.secondary)
+                
+                // Пример активности
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("🍕")
+                            .font(.title2)
+                        Text("Пицца в центре")
+                            .font(.headline)
+                        Spacer()
+                    }
+                    Text("Сегодня в 19:00")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("Собираемся поесть пиццу в центре города")
+                        .font(.body)
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(12)
+                .padding(.horizontal)
+            }
+            .navigationTitle("Активности")
+        }
+    }
+}
+
+struct ProfileView: View {
+    @EnvironmentObject var authManager: AuthManager
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Image(systemName: "person.circle.fill")
+                    .font(.system(size: 60))
+                    .foregroundColor(.purple)
+                
+                Text("Профиль")
+                    .font(.title)
+                
+                if let user = authManager.currentUser {
+                    VStack(spacing: 8) {
+                        Text("Добро пожаловать!")
+                            .foregroundColor(.secondary)
+                        
+                        Text(user.email ?? "Неизвестный email")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        Text("UID: \(user.uid)")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                        
+                        Text("✅ Firebase авторизация")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                    .padding()
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(12)
+                }
+                
+                Button("Выйти") {
+                    authManager.signOut()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .navigationTitle("Профиль")
+            .padding()
+        }
+    }
+}
+
+
+TochkaApp --- 
+
+import SwiftUI
+import Core
+
+@main
+struct TochkaApp: App {
+    
+    init() {
+        FirebaseManager.shared.configure()
+        print("🚀 Tochka приложение запущено")
+        print("📱 Тестирование авторизации...")
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
+
+WelcomeView --- 
+
+import Core
+import SwiftUI
+
+import SwiftUI
+import Core
+import DesingSystem
+
+public struct WelcomeView: View {
+    @StateObject private var viewModel = WelcomeViewModel()
+    let onGetStarted: () -> Void
+    let onSkip: () -> Void
+    
+    public init(onGetStarted: @escaping () -> Void, onSkip: @escaping () -> Void) {
+        self.onGetStarted = onGetStarted
+        self.onSkip = onSkip
+    }
+    
+    public var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // Фон как в HTML дизайне
+                Color.accentGreen
+                    .ignoresSafeArea()
+                
+                // Декоративные элементы (плавающие звездочки)
+                ForEach(0..<4, id: \.self) { index in
+                    let positions = [(0.2, 0.15), (0.85, 0.25), (0.15, 0.75), (0.75, 0.65)]
+                    Text("✨")
+                        .font(.system(size: 16))
+                        .opacity(0.3)
+                        .offset(
+                            x: geometry.size.width * positions[index].0 - geometry.size.width/2,
+                            y: geometry.size.height * positions[index].1 - geometry.size.height/2 + viewModel.floatingOffset
+                        )
+                        .animation(
+                            Animation.easeInOut(duration: 6).repeatForever().delay(Double(index) * 1.5),
+                            value: viewModel.floatingOffset
+                        )
+                }
+                
+                ScrollView {
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 80)
+                        
+                        // Логотип и заголовок (точно как в HTML)
+                        VStack(spacing: 32) {
+                            // Анимированный логотип
+                            ZStack {
+                                Circle()
+                                    .fill(Color.white)
+                                    .frame(width: 120, height: 120)
+                                    .shadow(color: .shadowColor, radius: 20, x: 0, y: 8)
+                                    .overlay(
+                                        // Shimmer эффект как в HTML
+                                        Circle()
+                                            .stroke(
+                                                LinearGradient(
+                                                    colors: [.clear, Color.white.opacity(0.3), .clear],
+                                                    startPoint: .topLeading,
+                                                    endPoint: .bottomTrailing
+                                                ),
+                                                lineWidth: 3
+                                            )
+                                            .rotationEffect(.degrees(viewModel.shimmerRotation))
+                                            .animation(
+                                                Animation.linear(duration: 3).repeatForever(autoreverses: false),
+                                                value: viewModel.shimmerRotation
+                                            )
+                                    )
+                                
+                                // Логотип/иконка
+                                if let _ = UIImage(named: "tochka-logo") {
+                                    Image("tochka-logo")
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 80, height: 80)
+                                } else {
+                                    Text("📍")
+                                        .font(.system(size: 48))
+                                }
+                            }
+                            .scaleEffect(viewModel.logoScale)
+                            .animation(
+                                Animation.easeInOut(duration: 3).repeatForever(autoreverses: true),
+                                value: viewModel.logoScale
+                            )
+                            
+                            // Текст заголовка
+                            VStack(spacing: 16) {
+                                Text("Tochka")
+                                    .font(.system(size: 36, weight: .bold, design: .default))
+                                    .foregroundColor(.textOnDark)
+                                    .tracking(1)
+                                
+                                Text("Откройте удивительные места рядом с вами и исследуйте мир")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(.textOnDark.opacity(0.9))
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(nil)
+                                    .padding(.horizontal, 32)
+                            }
+                        }
+                        
+                        Spacer(minLength: 48)
+                        
+                        // Фичи приложения (как в HTML)
+                        VStack(spacing: 24) {
+                            FeatureRow(
+                                icon: "🗺️",
+                                title: "Откройте новые места",
+                                subtitle: "Находите скрытые жемчужины поблизости",
+                                gradient: .gradientPink,
+                                isVisible: $viewModel.feature1Visible
+                            )
+                            
+                            FeatureRow(
+                                icon: "🌟",
+                                title: "Делитесь впечатлениями",
+                                subtitle: "Оценивайте места и оставляйте отзывы",
+                                gradient: .gradientGreen,
+                                isVisible: $viewModel.feature2Visible
+                            )
+                            
+                            FeatureRow(
+                                icon: "🎯",
+                                title: "Персональные маршруты",
+                                subtitle: "Создавайте уникальные путешествия",
+                                gradient: .gradientPurple,
+                                isVisible: $viewModel.feature3Visible
+                            )
+                        }
+                        .padding(.horizontal, 24)
+                        
+                        Spacer(minLength: 48)
+                        
+                        // Прогресс индикатор (точно как в HTML)
+                        HStack(spacing: 8) {
+                            ForEach(0..<3, id: \.self) { index in
+                                Circle()
+                                    .fill(index == viewModel.currentPage ? Color.textOnDark : Color.textOnDark.opacity(0.3))
+                                    .frame(width: 8, height: 8)
+                                    .scaleEffect(index == viewModel.currentPage ? 1.2 : 1.0)
+                                    .animation(.easeInOut(duration: 0.3), value: viewModel.currentPage)
+                            }
+                        }
+                        .padding(.bottom, 32)
+                        
+                        // Кнопки (как в HTML дизайне)
+                        VStack(spacing: 16) {
+                            Button(action: onGetStarted) {
+                                Text("Начать исследование")
+                                    .font(.system(size: 17, weight: .semibold))
+                                    .foregroundColor(.textPrimary)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 56)
+                                    .background(Color.textOnDark)
+                                    .cornerRadius(16)
+                                    .shadow(color: .shadowColor, radius: 8, x: 0, y: 4)
+                            }
+                            .scaleEffect(viewModel.buttonsVisible ? 1.0 : 0.8)
+                            .opacity(viewModel.buttonsVisible ? 1.0 : 0.0)
+                            
+                            Button(action: onSkip) {
+                                Text("Пропустить")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.textOnDark.opacity(0.8))
+                                    .frame(height: 44)
+                            }
+                            .opacity(viewModel.buttonsVisible ? 1.0 : 0.0)
+                        }
+                        .padding(.horizontal, 32)
+                        .animation(.spring(response: 0.8, dampingFraction: 0.8).delay(1.0), value: viewModel.buttonsVisible)
+                        
+                        Spacer(minLength: 80)
+                    }
+                }
+            }
+        }
+        .onAppear {
+            viewModel.startAnimations()
+        }
+    }
+}
+
+
+AuthViewModel ---
+import Foundation
+import Combine
+import Core
+
+@MainActor
+public class AuthViewModel: ObservableObject {
+    @Published var email = ""
+    @Published var password = ""
+    @Published var confirmPassword = ""
+    @Published var firstName = ""
+    @Published var lastName = ""
+    @Published var isRegistering = false
+    @Published var isLoading = false
+    @Published var showError = false
+    @Published var errorMessage: String?
+    @Published var showPasswordResetAlert = false
+    @Published var agreeToTerms = false
+    @Published var subscribeToNotifications = true
+    
+    private var cancellables = Set<AnyCancellable>()
+    private let authManager = AuthManager.shared
+    
+    public init() {
+        // Подписываемся на состояние AuthManager
+        authManager.$isLoading
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.isLoading, on: self)
+            .store(in: &cancellables)
+        
+        authManager.$errorMessage
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] error in
+                if let error = error {
+                    self?.errorMessage = error
+                    self?.showError = true
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    // MARK: - Form Validation
+    
+    var isLoginFormValid: Bool {
+        !email.isEmpty &&
+        email.validEmail &&
+        !password.isEmpty &&
+        password.count >= 6
+    }
+    
+    var isRegistrationFormValid: Bool {
+        !email.isEmpty &&
+        email.validEmail &&
+        !password.isEmpty &&
+        password.count >= 6 &&
+        !confirmPassword.isEmpty &&
+        password == confirmPassword &&
+        agreeToTerms
+    }
+    
+    // MARK: - Actions
+    
+    func signIn() {
+        guard isLoginFormValid else { return }
+        
+        clearError()
+        authManager.signIn(email: email, password: password)
+    }
+    
+    func signUp() {
+        guard isRegistrationFormValid else { return }
+        
+        clearError()
+        authManager.signUp(email: email, password: password)
+    }
+    
+    func resetPassword() {
+        guard !email.isEmpty, email.validEmail else {
+            showErrorMessage("Введите корректный email для сброса пароля")
+            return
+        }
+        
+        showPasswordResetAlert = true
+    }
+    
+    func clearError() {
+        showError = false
+        errorMessage = nil
+        authManager.clearError()
+    }
+    
+    private func showErrorMessage(_ message: String) {
+        errorMessage = message
+        showError = true
+    }
+}
+
+WelcomeViewModel ---
+
+import SwiftUI
+import Combine
+
+@MainActor
+public class WelcomeViewModel: ObservableObject {
+    @Published var currentPage = 0
+    @Published var logoScale: CGFloat = 1.0
+    @Published var floatingOffset: CGFloat = 0
+    @Published var shimmerRotation: Double = 0
+    @Published var feature1Visible = false
+    @Published var feature2Visible = false
+    @Published var feature3Visible = false
+    @Published var buttonsVisible = false
+    
+    private var cancellables = Set<AnyCancellable>()
+    
+    public init() {}
+    
+    func startAnimations() {
+        // Логотип анимация
+        withAnimation(Animation.easeInOut(duration: 3).repeatForever(autoreverses: true)) {
+            logoScale = 1.1
+        }
+        
+        // Shimmer эффект
+        withAnimation(Animation.linear(duration: 3).repeatForever(autoreverses: false)) {
+            shimmerRotation = 360
+        }
+        
+        // Плавающие элементы
+        withAnimation(Animation.easeInOut(duration: 6).repeatForever()) {
+            floatingOffset = 20
+        }
+        
+        // Последовательное появление фич
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                self.feature1Visible = true
+            }
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                self.feature2Visible = true
+            }
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                self.feature3Visible = true
+            }
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation {
+                self.buttonsVisible = true
+            }
+        }
+        
+        // Автопереключение страниц
+        Timer.publish(every: 3.0, on: .main, in: .common)
+            .autoconnect()
+            .delay(for: .seconds(2), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self = self else { return }
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    self.currentPage = (self.currentPage + 1) % 3
+                }
+            }
+            .store(in: &cancellables)
+    }
+}
+
+
+AuthenticationView --- 
+
+import SwiftUI
+import Core
+import DesingSystem
+
+public struct AuthenticationView: View {
+    @StateObject private var viewModel = AuthViewModel()
+    @State private var showWelcome = true
+    @State private var showRegistration = false
+    
+    public init() {}
+    
+    public var body: some View {
+        ZStack {
+            if showWelcome {
+                WelcomeView(
+                    onGetStarted: {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            showWelcome = false
+                        }
+                    },
+                    onSkip: {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            showWelcome = false
+                        }
+                    }
+                )
+                .transition(.asymmetric(
+                    insertion: .opacity,
+                    removal: .opacity.combined(with: .move(edge: .leading))
+                ))
+            } else if showRegistration {
+                RegistrationView(
+                    onSwitchToLogin: {
+                        withAnimation {
+                            showRegistration = false
+                        }
+                    },
+                    onBack: {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            showWelcome = true
+                            showRegistration = false
+                        }
+                    }
+                )
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .move(edge: .trailing)),
+                    removal: .opacity
+                ))
+            } else {
+                LoginView(
+                    onSwitchToRegistration: {
+                        withAnimation {
+                            showRegistration = true
+                        }
+                    },
+                    onBack: {
+                        withAnimation(.easeInOut(duration: 0.5)) {
+                            showWelcome = true
+                        }
+                    }
+                )
+                .transition(.asymmetric(
+                    insertion: .opacity.combined(with: .move(edge: .trailing)),
+                    removal: .opacity
+                ))
+            }
+        }
+    }
+}
+
+
+LoginView ---
+
+import SwiftUI
+import Core
+import DesingSystem
+
+public struct LoginView: View {
+    @StateObject private var viewModel = AuthViewModel()
+    let onSwitchToRegistration: () -> Void
+    let onBack: () -> Void
+    
+    public init(
+        onSwitchToRegistration: @escaping () -> Void,
+        onBack: @escaping () -> Void
+    ) {
+        self.onSwitchToRegistration = onSwitchToRegistration
+        self.onBack = onBack
+    }
+    
+    public var body: some View {
+        NavigationView {
+            ZStack {
+                // Фон
+                Color.backgroundMain
+                    .ignoresSafeArea()
+                
+                // Декоративные точки
+                ForEach(0..<4, id: \.self) { index in
+                    Circle()
+                        .fill(Color.primaryBlue.opacity(0.05))
+                        .frame(width: 6, height: 6)
+                        .offset(
+                            x: CGFloat.random(in: -150...150),
+                            y: CGFloat.random(in: -300...300)
+                        )
+                }
+                
+                ScrollView {
+                    VStack(spacing: 40) {
+                        Spacer(minLength: 60)
+                        
+                        // Заголовок (как в HTML)
+                        VStack(spacing: 16) {
+                            Text("Добро пожаловать")
+                                .font(.system(size: 28, weight: .bold))
+                                .foregroundColor(.textPrimary)
+                            
+                            Text("Войдите в свой аккаунт Tochka")
+                                .font(.system(size: 16))
+                                .foregroundColor(.textSecondary)
+                        }
+                        
+                        // Форма входа
+                        VStack(spacing: 24) {
+                            VStack(spacing: 16) {
+                                // Email поле с лейблом
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Email")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(.textPrimary)
+                                    
+                                    TextField("your@email.com", text: $viewModel.email)
+                                        .textFieldStyle(ModernTextFieldStyle())
+                                        .keyboardType(.emailAddress)
+                                        .autocapitalization(.none)
+                                        .disableAutocorrection(true)
+                                }
+                                
+                                // Пароль поле с лейблом
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Пароль")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundColor(.textPrimary)
+                                    
+                                    HStack {
+                                        if viewModel.showPassword {
+                                            TextField("Введите пароль", text: $viewModel.password)
+                                        } else {
+                                            SecureField("Введите пароль", text: $viewModel.password)
+                                        }
+                                        
+                                        Button(action: { viewModel.showPassword.toggle() }) {
+                                            Text(viewModel.showPassword ? "Скрыть" : "Показать")
+                                                .font(.system(size: 14, weight: .medium))
+                                                .foregroundColor(.textSecondary)
+                                        }
+                                    }
+                                    .textFieldStyle(ModernTextFieldStyle())
+                                }
+                            }
+                            
+                            // Забыли пароль
+                            HStack {
+                                Spacer()
+                                Button("Забыли пароль?") {
+                                    viewModel.resetPassword()
+                                }
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.primaryBlue)
+                            }
+                            
+                            // Кнопка входа
+                            ModernButton(
+                                title: "Войти",
+                                isLoading: viewModel.isLoading,
+                                isDisabled: !viewModel.isLoginFormValid,
+                                style: .primary
+                            ) {
+                                viewModel.signIn()
+                            }
+                        }
+                        
+                        // Разделитель (как в HTML)
+                        HStack {
+                            Rectangle()
+                                .fill(Color.textSecondary.opacity(0.3))
+                                .frame(height: 1)
+                            
+                            Text("или")
+                                .font(.system(size: 14))
+                                .foregroundColor(.textSecondary)
+                                .padding(.horizontal, 16)
+                            
+                            Rectangle()
+                                .fill(Color.textSecondary.opacity(0.3))
+                                .frame(height: 1)
+                        }
+                        
+                        // Социальные кнопки (точно как в HTML)
+                        VStack(spacing: 12) {
+                            SocialLoginButton(
+                                title: "Войти через Apple",
+                                icon: "🍎",
+                                backgroundColor: .textPrimary
+                            ) {
+                                viewModel.signInWithApple()
+                            }
+                            
+                            SocialLoginButton(
+                                title: "Войти через Google",
+                                icon: "📧",
+                                backgroundColor: .primaryBlue
+                            ) {
+                                viewModel.signInWithGoogle()
+                            }
+                        }
+                        
+                        // Переход к регистрации
+                        HStack {
+                            Text("Нет аккаунта?")
+                                .font(.system(size: 14))
+                                .foregroundColor(.textSecondary)
+                            
+                            Button("Зарегистрироваться") {
+                                onSwitchToRegistration()
+                            }
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.primaryBlue)
+                        }
+                        
+                        Spacer(minLength: 40)
+                    }
+                    .padding(.horizontal, 32)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: onBack) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.primaryBlue)
+                    }
+                }
+            }
+        }
+        .alert("Ошибка", isPresented: $viewModel.showError) {
+            Button("OK") { viewModel.clearError() }
+        } message: {
+            Text(viewModel.errorMessage ?? "Неизвестная ошибка")
+        }
+        .alert("Сброс пароля", isPresented: $viewModel.showPasswordResetAlert) {
+            Button("OK") {}
+        } message: {
+            Text("Инструкции по сбросу пароля отправлены на ваш email")
+        }
+    }
+}
+
+
+RegistrationView ---
+
+import SwiftUI
+import Core
+import DesingSystem
+
+public struct RegistrationView: View {
+    @StateObject private var viewModel = AuthViewModel()
+    let onSwitchToLogin: () -> Void
+    let onBack: () -> Void
+    
+    public init(
+        onSwitchToLogin: @escaping () -> Void,
+        onBack: @escaping () -> Void
+    ) {
+        self.onSwitchToLogin = onSwitchToLogin
+        self.onBack = onBack
+    }
+    
+    public var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 32) {
+                    Spacer(minLength: 40)
+                    
+                    // Заголовок
+                    VStack(spacing: 16) {
+                        Text("Создать аккаунт")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+                        
+                        Text("Присоединяйтесь к сообществу Tochka")
+                            .font(.subheadline)
+                            .foregroundColor(.textSecondary)
+                    }
+                    
+                    // Форма регистрации
+                    VStack(spacing: 20) {
+                        CustomTextField(
+                            placeholder: "your@email.com",
+                            text: $viewModel.email,
+                            keyboardType: .emailAddress
+                        )
+                        
+                        CustomTextField(
+                            placeholder: "Минимум 6 символов",
+                            text: $viewModel.password,
+                            isSecure: true
+                        )
+                        
+                        CustomTextField(
+                            placeholder: "Подтвердите пароль",
+                            text: $viewModel.confirmPassword,
+                            isSecure: true
+                        )
+                        
+                        // Простой чекбокс соглашения
+                        HStack(alignment: .top, spacing: 12) {
+                            Button(action: { viewModel.agreeToTerms.toggle() }) {
+                                Image(systemName: viewModel.agreeToTerms ? "checkmark.square.fill" : "square")
+                                    .foregroundColor(viewModel.agreeToTerms ? .primaryBlue : .gray)
+                                    .font(.title3)
+                            }
+                            
+                            Text("Я соглашаюсь с условиями использования")
+                                .font(.subheadline)
+                                .foregroundColor(.textSecondary)
+                                .multilineTextAlignment(.leading)
+                            
+                            Spacer()
+                        }
+                        
+                        PrimaryButton(
+                            title: "Создать аккаунт",
+                            isLoading: viewModel.isLoading,
+                            isDisabled: !viewModel.isRegistrationFormValid
+                        ) {
+                            viewModel.signUp()
+                        }
+                    }
+                    
+                    // Переход к входу
+                    HStack {
+                        Text("Уже есть аккаунт?")
+                            .font(.subheadline)
+                            .foregroundColor(.textSecondary)
+                        
+                        Button("Войти") {
+                            onSwitchToLogin()
+                        }
+                        .font(.subheadline)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.primaryBlue)
+                    }
+                    
+                    Spacer(minLength: 40)
+                }
+                .padding(.horizontal, 32)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: onBack) {
+                        Image(systemName: "chevron.left")
+                            .font(.headline)
+                            .foregroundColor(.primaryBlue)
+                    }
+                }
+            }
+        }
+        .alert("Ошибка", isPresented: $viewModel.showError) {
+            Button("OK") { viewModel.clearError() }
+        } message: {
+            Text(viewModel.errorMessage ?? "Неизвестная ошибка")
+        }
+    }
+}
+
+
+DesignSystem
+
+import SwiftUI
+import Core
+
+public struct ModernButton: View {
+    let title: String
+    let isLoading: Bool
+    let isDisabled: Bool
+    let style: ButtonStyle
+    let action: () -> Void
+    
+    public enum ButtonStyle {
+        case primary
+        case secondary
+        case accent
+    }
+    
+    public init(
+        title: String,
+        isLoading: Bool = false,
+        isDisabled: Bool = false,
+        style: ButtonStyle = .primary,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.isLoading = isLoading
+        self.isDisabled = isDisabled
+        self.style = style
+        self.action = action
+    }
+    
+    public var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: textColor))
+                        .scaleEffect(0.8)
+                } else {
+                    Text(title)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(textColor)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(backgroundColor)
+            .cornerRadius(16)
+            .shadow(color: shadowColor, radius: shadowRadius, x: 0, y: shadowY)
+        }
+        .disabled(isDisabled || isLoading)
+        .scaleEffect(isDisabled ? 0.98 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: isLoading)
+        .animation(.easeInOut(duration: 0.1), value: isDisabled)
+    }
+    
+    private var backgroundColor: Color {
+        switch style {
+        case .primary:
+            return isDisabled ? Color.textSecondary.opacity(0.3) : Color.primaryBlue
+        case .secondary:
+            return Color.backgroundCard
+        case .accent:
+            return isDisabled ? Color.textSecondary.opacity(0.3) : Color.accentGreen
+        }
+    }
+    
+    private var textColor: Color {
+        switch style {
+        case .primary, .accent:
+            return Color.textOnDark
+        case .secondary:
+            return Color.primaryBlue
+        }
+    }
+    
+    private var shadowColor: Color {
+        isDisabled ? .clear : .shadowColor
+    }
+    
+    private var shadowRadius: CGFloat {
+        isDisabled ? 0 : 8
+    }
+    
+    private var shadowY: CGFloat {
+        isDisabled ? 0 : 4
+    }
+}
+
+import SwiftUI
+import Core
+
+public struct PrimaryButton: View {
+    let title: String
+    let action: () -> Void
+    let isLoading: Bool
+    let isDisabled: Bool
+    
+    public init(
+        title: String,
+        isLoading: Bool = false,
+        isDisabled: Bool = false,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.action = action
+        self.isLoading = isLoading
+        self.isDisabled = isDisabled
+    }
+    
+    public var body: some View {
+        Button(action: action) {
+            HStack {
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .scaleEffect(0.8)
+                } else {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundColor(.white)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: Constants.UI.buttonHeight)
+            .background(
+                isDisabled || isLoading ? Color.gray : Color.primaryBlue
+            )
+            .cornerRadius(Constants.UI.cornerRadius)
+        }
+        .disabled(isDisabled || isLoading)
+        .animation(.easeInOut(duration: Constants.UI.animationDuration), value: isLoading)
+    }
+}
+
+
+import SwiftUI
+import Core
+
+public struct SecondaryButton: View {
+    let title: String
+    let action: () -> Void
+    let isDisabled: Bool
+    
+    public init(
+        title: String,
+        isDisabled: Bool = false,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.action = action
+        self.isDisabled = isDisabled
+    }
+    
+    public var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(isDisabled ? .gray : .primaryBlue)
+                .frame(maxWidth: .infinity)
+                .frame(height: Constants.UI.buttonHeight)
+                .background(Color.clear)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Constants.UI.cornerRadius)
+                        .stroke(isDisabled ? Color.gray : Color.primaryBlue, lineWidth: 1)
+                )
+        }
+        .disabled(isDisabled)
+    }
+}
+
+
+import SwiftUI
+import Core
+
+public struct SocialLoginButton: View {
+    let title: String
+    let icon: String
+    let backgroundColor: Color
+    let action: () -> Void
+    
+    public init(
+        title: String,
+        icon: String,
+        backgroundColor: Color,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.icon = icon
+        self.backgroundColor = backgroundColor
+        self.action = action
+    }
+    
+    public var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Text(icon)
+                    .font(.system(size: 20))
+                
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.textOnDark)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(backgroundColor)
+            .cornerRadius(16)
+            .shadow(color: .shadowColor, radius: 4, x: 0, y: 2)
+        }
+        .scaleEffect(0.99)
+        .animation(.easeInOut(duration: 0.1), value: true)
+    }
+}
+
+
+import SwiftUI
+import Core
+
+public struct ActivityCard: View {
+    let activity: Activity
+    let action: () -> Void
+    
+    public init(activity: Activity, action: @escaping () -> Void) {
+        self.activity = activity
+        self.action = action
+    }
+    
+    public var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 16) {
+                // Заголовок с иконкой категории
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(activity.title)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.leading)
+                        
+                        Text(activity.location.name)
+                            .font(.subheadline)
+                            .foregroundColor(.textSecondary)
+                    }
+                    
+                    Spacer()
+                    
+                    // Иконка категории в кружке (как в макете)
+                    Circle()
+                        .fill(Color.accentGreen.opacity(0.2))
+                        .frame(width: 40, height: 40)
+                        .overlay(
+                            Text(activity.category.emoji)
+                                .font(.title3)
+                        )
+                }
+                
+                // Описание
+                Text(activity.description)
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                
+                // Метаинформация (как в макете)
+                HStack {
+                    // Участники
+                    HStack(spacing: 4) {
+                        Image(systemName: "person.2.fill")
+                            .font(.caption)
+                            .foregroundColor(.primaryBlue)
+                        Text("\(activity.participantIds.count)")
+                        if let max = activity.maxParticipants {
+                            Text("/ \(max)")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundColor(.textSecondary)
+                    
+                    Spacer()
+                    
+                    // Время
+                    Text(activity.dateTime.dayAndTimeFormat)
+                        .font(.caption)
+                        .foregroundColor(.textSecondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.secondaryGray)
+                        .cornerRadius(8)
+                }
+            }
+            .padding(16)
+            .background(Color.backgroundCard)
+            .cornerRadius(16) // Больше скругления как в макете
+            .shadow(color: Color.shadowColor, radius: 8, x: 0, y: 4)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+
+import SwiftUI
+import Core
+
+public struct CategoryCard: View {
+    let category: ActivityCategory
+    let isSelected: Bool
+    let action: () -> Void
+    
+    public init(
+        category: ActivityCategory,
+        isSelected: Bool = false,
+        action: @escaping () -> Void
+    ) {
+        self.category = category
+        self.isSelected = isSelected
+        self.action = action
+    }
+    
+    public var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Text(category.emoji)
+                    .font(.title2)
+                
+                Text(category.displayName)
+                    .font(.caption)
+                    .foregroundColor(isSelected ? .white : .primary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(width: 80, height: 80)
+            .background(
+                isSelected ? Color.primaryBlue : Color.secondaryGray
+            )
+            .cornerRadius(Constants.UI.cornerRadius)
+            .overlay(
+                RoundedRectangle(cornerRadius: Constants.UI.cornerRadius)
+                    .stroke(
+                        isSelected ? Color.primaryBlue : Color.gray.opacity(0.3),
+                        lineWidth: isSelected ? 2 : 1
+                    )
+            )
+        }
+        .animation(.easeInOut(duration: Constants.UI.animationDuration), value: isSelected)
+    }
+}
+
+
+import SwiftUI
+import Core
+
+public struct PlaceCard: View {
+    let title: String
+    let subtitle: String
+    let distance: String
+    let rating: String
+    let gradient: LinearGradient
+    let icon: String
+    let isActive: Bool
+    let action: () -> Void
+    
+    public init(
+        title: String,
+        subtitle: String,
+        distance: String,
+        rating: String,
+        gradient: LinearGradient,
+        icon: String,
+        isActive: Bool = false,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.distance = distance
+        self.rating = rating
+        self.gradient = gradient
+        self.icon = icon
+        self.isActive = isActive
+        self.action = action
+    }
+    
+    public var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                // Иконка места с градиентом (как в HTML)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(gradient)
+                        .frame(width: 48, height: 48)
+                        .shadow(color: .shadowColor, radius: 4, x: 0, y: 2)
+                    
+                    Text(icon)
+                        .font(.system(size: 20))
+                }
+                
+                // Информация о месте
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                        .lineLimit(1)
+                    
+                    Text(subtitle)
+                        .font(.system(size: 12))
+                        .foregroundColor(.textSecondary)
+                        .lineLimit(1)
+                    
+                    HStack(spacing: 8) {
+                        Text(distance)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.primaryBlue)
+                        
+                        Text(rating)
+                            .font(.system(size: 11))
+                            .foregroundColor(.orange)
+                    }
+                }
+                
+                Spacer()
+            }
+            .padding(12)
+            .background(
+                Color.backgroundCard
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(
+                                isActive ? Color.primaryBlue : Color.clear,
+                                lineWidth: 2
+                            )
+                    )
+            )
+            .cornerRadius(12)
+            .shadow(color: isActive ? Color.primaryBlue.opacity(0.2) : .shadowColor, radius: 8, x: 0, y: 4)
+        }
+        .animation(.easeInOut(duration: 0.2), value: isActive)
+    }
+}
+
+
+import SwiftUI
+import Core
+
+public struct CustomTextField: View {
+    let placeholder: String
+    @Binding var text: String
+    let isSecure: Bool
+    let keyboardType: UIKeyboardType
+    
+    public init(
+        placeholder: String,
+        text: Binding<String>,
+        isSecure: Bool = false,
+        keyboardType: UIKeyboardType = .default
+    ) {
+        self.placeholder = placeholder
+        self._text = text
+        self.isSecure = isSecure
+        self.keyboardType = keyboardType
+    }
+    
+    public var body: some View {
+        Group {
+            if isSecure {
+                SecureField(placeholder, text: $text)
+            } else {
+                TextField(placeholder, text: $text)
+                    .keyboardType(keyboardType)
+            }
+        }
+        .textFieldStyle(RoundedBorderTextFieldStyle())
+        .autocapitalization(.none)
+        .disableAutocorrection(true)
+    }
+}
+
+
+import SwiftUI
+import Core
+
+public struct ModernTextFieldStyle: TextFieldStyle {
+    public init() {}
+    
+    public func _body(configuration: TextField<Self._Label>) -> some View {
+        configuration
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
+            .background(
+                Color.backgroundCard
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.textSecondary.opacity(0.2), lineWidth: 1)
+                    )
+            )
+            .cornerRadius(12)
+            .shadow(color: .shadowColor, radius: 2, x: 0, y: 1)
+    }
+}
+
+
+import SwiftUI
+import Core
+
+public struct SearchBar: View {
+    @Binding var text: String
+    let placeholder: String
+    let onFilterTap: () -> Void
+    
+    public init(
+        text: Binding<String>,
+        placeholder: String = "Поиск мест и активностей...",
+        onFilterTap: @escaping () -> Void
+    ) {
+        self._text = text
+        self.placeholder = placeholder
+        self.onFilterTap = onFilterTap
+    }
+    
+    public var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.textSecondary)
+                .font(.system(size: 16))
+            
+            TextField(placeholder, text: $text)
+                .font(.system(size: 16))
+                .foregroundColor(.textPrimary)
+            
+            Button(action: onFilterTap) {
+                Image(systemName: "slider.horizontal.3")
+                    .foregroundColor(.primaryBlue)
+                    .font(.system(size: 16))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            .ultraThinMaterial,
+            in: RoundedRectangle(cornerRadius: 12)
+        )
+        .shadow(color: .shadowColor, radius: 8, x: 0, y: 4)
+    }
+}
+
+
+import SwiftUI
+import Core
+
+public struct EmptyStateView: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let actionTitle: String?
+    let action: (() -> Void)?
+    
+    public init(
+        icon: String,
+        title: String,
+        subtitle: String,
+        actionTitle: String? = nil,
+        action: (() -> Void)? = nil
+    ) {
+        self.icon = icon
+        self.title = title
+        self.subtitle = subtitle
+        self.actionTitle = actionTitle
+        self.action = action
+    }
+    
+    public var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: icon)
+                .font(.system(size: 60))
+                .foregroundColor(.primaryBlue)
+            
+            Text(title)
+                .font(.title)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+            
+            Text(subtitle)
+                .font(.subheadline)
+                .foregroundColor(.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            
+            if let actionTitle = actionTitle, let action = action {
+                PrimaryButton(title: actionTitle, action: action)
+                    .frame(maxWidth: 200)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground))
+    }
+}
+
+
+import SwiftUI
+import Core
+
+public struct ErrorView: View {
+    let message: String
+    let retryAction: (() -> Void)?
+    
+    public init(message: String, retryAction: (() -> Void)? = nil) {
+        self.message = message
+        self.retryAction = retryAction
+    }
+    
+    public var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.largeTitle)
+                .foregroundColor(.orange)
+            
+            Text("Ошибка")
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            Text(message)
+                .font(.body)
+                .foregroundColor(.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            
+            if let retryAction = retryAction {
+                PrimaryButton(title: "Повторить", action: retryAction)
+                    .frame(maxWidth: 200)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground))
+    }
+}
+
+
+import SwiftUI
+import Core
+
+public struct LoadingView: View {
+    let message: String
+    
+    public init(message: String = "Загрузка...") {
+        self.message = message
+    }
+    
+    public var body: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: .primaryBlue))
+                .scaleEffect(1.2)
+            
+            Text(message)
+                .font(.subheadline)
+                .foregroundColor(.textSecondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground))
+    }
+}
+
+
+import SwiftUI
+import Core
+
+public struct ProfileHeader: View {
+    let name: String
+    let level: String
+    let avatar: String
+    let isVerified: Bool
+    let stats: [(String, String)] // (значение, название)
+    let onAddFriend: () -> Void
+    let onMore: () -> Void
+    
+    public init(
+        name: String,
+        level: String,
+        avatar: String,
+        isVerified: Bool = false,
+        stats: [(String, String)],
+        onAddFriend: @escaping () -> Void,
+        onMore: @escaping () -> Void
+    ) {
+        self.name = name
+        self.level = level
+        self.avatar = avatar
+        self.isVerified = isVerified
+        self.stats = stats
+        self.onAddFriend = onAddFriend
+        self.onMore = onMore
+    }
+    
+    public var body: some View {
+        VStack(spacing: 16) {
+            // Аватар и имя (как в HTML)
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(.gradientPurple)
+                        .frame(width: 60, height: 60)
+                        .shadow(color: .shadowColor, radius: 8, x: 0, y: 4)
+                    
+                    Text(avatar)
+                        .font(.system(size: 24))
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 4) {
+                        Text(name)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.textPrimary)
+                        
+                        if isVerified {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.accentGreen)
+                                    .frame(width: 16, height: 16)
+                                
+                                Text("✓")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.textOnDark)
+                            }
+                        }
+                    }
+                    
+                    Text(level)
+                        .font(.system(size: 12))
+                        .foregroundColor(.textSecondary)
+                }
+                
+                Spacer()
+            }
+            
+            // Статистика в grid (как в HTML)
+            HStack(spacing: 12) {
+                ForEach(Array(stats.enumerated()), id: \.offset) { index, stat in
+                    VStack(spacing: 4) {
+                        Text(stat.0)
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.textPrimary)
+                        
+                        Text(stat.1.uppercased())
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(.textSecondary)
+                            .tracking(0.5)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.backgroundMain)
+                    .cornerRadius(8)
+                }
+            }
+            
+            // Кнопки действий (как в HTML)
+            HStack(spacing: 8) {
+                ModernButton(
+                    title: "+ Add Friend",
+                    style: .accent
+                ) {
+                    onAddFriend()
+                }
+                
+                Button(action: onMore) {
+                    Text("⋯")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.textSecondary)
+                        .frame(width: 44, height: 56)
+                        .background(Color.backgroundMain)
+                        .cornerRadius(8)
+                }
+            }
+        }
+        .padding(16)
+        .background(Color.backgroundCard)
+        .cornerRadius(16)
+        .shadow(color: .shadowColor, radius: 8, x: 0, y: 4)
+    }
+}
+

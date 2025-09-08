@@ -1,31 +1,38 @@
-import SwiftUI
-import Core
+//
+//  WelcomeView.swift
+//  Tochka
+//
+//  Created by Artem Rodionov on 08.07.2025.
+//
 
-struct WelcomeView: View {
+import Core
+import SwiftUI
+
+struct WelcomeViewTest: View {
     @EnvironmentObject var coordinator: AppCoordinator
-    
+
     var body: some View {
         VStack(spacing: 32) {
             Spacer()
-            
+
             Image(systemName: "location.circle.fill")
                 .font(.system(size: 80))
                 .foregroundColor(.blue)
-            
+
             VStack(spacing: 16) {
                 Text("Welcome to Tochka")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .multilineTextAlignment(.center)
-                
+
                 Text("Находи интересные активности рядом с тобой")
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
             }
-            
+
             Spacer()
-            
+
             VStack(spacing: 16) {
                 Button(action: {
                     // TODO: Реализовать авторизацию
@@ -33,7 +40,7 @@ struct WelcomeView: View {
                     let testUsesr = User(
                         id: "test-user",
                         email: "test@example.com",
-                        nickname: "Test user"
+                        displayName: "Test user"
                     )
                     coordinator.signIn(user: testUsesr)
                 }) {
@@ -44,7 +51,7 @@ struct WelcomeView: View {
                         .foregroundColor(.white)
                         .cornerRadius(12)
                 }
-                
+
                 Button(action: {
                     // TODO: Реализовать регистрацию
                 }) {

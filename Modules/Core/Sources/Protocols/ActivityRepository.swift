@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 
 public protocol ActivityRepository {
     func createActivity(_ activity: Activity) -> AnyPublisher<Void, Error>

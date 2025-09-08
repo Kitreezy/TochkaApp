@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 
 public protocol CChatRepository {
     func sendMessage(_ message: ChatMessage) -> AnyPublisher<Void, Error>

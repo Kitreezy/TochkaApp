@@ -88,7 +88,7 @@ format: ## Форматирование кода
 	swiftformat .
 
 open: ## Открыть проект в Xcode
-	@if [ -f $(WORKSPACE) ]; then \
+	@if [ -e $(WORKSPACE) ]; then \
 		open $(WORKSPACE); \
 	else \
 		echo "$(RED)❌ Workspace не найден. Запустите 'make generate'$(NC)"; \
