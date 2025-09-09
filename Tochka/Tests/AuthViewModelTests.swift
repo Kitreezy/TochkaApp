@@ -27,21 +27,21 @@ final class MockAuthManager: AuthManaging {
 }
 
 final class AuthViewModelTests: XCTestCase {
-    func test_loginFormValidation_validData_returnsTrue() {
+    @MainActor func test_loginFormValidation_validData_returnsTrue() {
         let vm = AuthViewModel(authManager: MockAuthManager())
         vm.email = "user@example.com"
         vm.password = "123456"
         XCTAssertTrue(vm.isLoginFormValid)
     }
 
-    func test_loginFormValidation_invalidEmail_returnsFalse() {
+    @MainActor func test_loginFormValidation_invalidEmail_returnsFalse() {
         let vm = AuthViewModel(authManager: MockAuthManager())
         vm.email = "invalid"
         vm.password = "123456"
         XCTAssertFalse(vm.isLoginFormValid)
     }
 
-    func test_registrationFormValidation_requiresMatchingPasswordsAndTerms() {
+    @MainActor func test_registrationFormValidation_requiresMatchingPasswordsAndTerms() {
         let vm = AuthViewModel(authManager: MockAuthManager())
         vm.email = "user@example.com"
         vm.password = "123456"
@@ -50,7 +50,7 @@ final class AuthViewModelTests: XCTestCase {
         XCTAssertTrue(vm.isRegistrationFormValid)
     }
 
-    func test_signIn_invokesManagerWhenFormValid() {
+    @MainActor func test_signIn_invokesManagerWhenFormValid() {
         let mock = MockAuthManager()
         let vm = AuthViewModel(authManager: mock)
         vm.email = "user@example.com"
@@ -60,7 +60,7 @@ final class AuthViewModelTests: XCTestCase {
         XCTAssertEqual(mock.signInCalls.first?.email, "user@example.com")
     }
 
-    func test_signIn_doesNotInvokeManagerWhenFormInvalid() {
+    @MainActor func test_signIn_doesNotInvokeManagerWhenFormInvalid() {
         let mock = MockAuthManager()
         let vm = AuthViewModel(authManager: mock)
         vm.email = "invalid"
@@ -69,7 +69,7 @@ final class AuthViewModelTests: XCTestCase {
         XCTAssertEqual(mock.signInCalls.count, 0)
     }
 
-    func test_signUp_invokesManagerWhenFormValid() {
+    @MainActor func test_signUp_invokesManagerWhenFormValid() {
         let mock = MockAuthManager()
         let vm = AuthViewModel(authManager: mock)
         vm.email = "user@example.com"
@@ -80,7 +80,7 @@ final class AuthViewModelTests: XCTestCase {
         XCTAssertEqual(mock.signUpCalls.count, 1)
     }
 
-    func test_signUp_doesNotInvokeManagerWhenFormInvalid() {
+    @MainActor func test_signUp_doesNotInvokeManagerWhenFormInvalid() {
         let mock = MockAuthManager()
         let vm = AuthViewModel(authManager: mock)
         vm.email = "user@example.com"
@@ -91,7 +91,7 @@ final class AuthViewModelTests: XCTestCase {
         XCTAssertEqual(mock.signUpCalls.count, 0)
     }
 
-    func test_resetPassword_withInvalidEmail_setsError() {
+    @MainActor func test_resetPassword_withInvalidEmail_setsError() {
         let vm = AuthViewModel(authManager: MockAuthManager())
         vm.email = "invalid"
         vm.resetPassword()
@@ -99,7 +99,7 @@ final class AuthViewModelTests: XCTestCase {
         XCTAssertNotNil(vm.errorMessage)
     }
 
-    func test_clearError_resetsFlagsAndDelegatesToManager() {
+    @MainActor func test_clearError_resetsFlagsAndDelegatesToManager() {
         let mock = MockAuthManager()
         let vm = AuthViewModel(authManager: mock)
         vm.errorMessage = "Some error"
