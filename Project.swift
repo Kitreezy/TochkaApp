@@ -166,6 +166,21 @@ let project = Project(
                 .target(name: "ChatFeature"),
                 .target(name: "ProfileFeature")
             ]
+        ),
+
+        // MARK: - Unit Tests
+        .target(
+            name: "TochkaTests",
+            destinations: .iOS,
+            product: .unitTests,
+            bundleId: "com.tochka.app.tests",
+            deploymentTargets: .iOS("16.0"),
+            sources: ["Tochka/Tests/**"],
+            dependencies: [
+                .target(name: "AuthFeature"),
+                .target(name: "Core"),
+                .target(name: "DesignSystem")
+            ]
         )
     ]
 )
