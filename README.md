@@ -157,5 +157,133 @@ make test
 - **Snapshot Tests**: Визуальное тестирование компонентов
 
 
+### Tuist установка и настройка 
+
+- **Модульная архитектура** - каждая фича в отдельном модуле
+- **Масштабируемость** - легко добавлять новые модули
+- **Переиспользование** - shared компоненты между модулями
+- **Быстрая сборка** - только измененные модули пересобираются
+  
+  
+```swift
+# Установка через Homebrew 
+brew tap tuist/tuist 
+brew install tuist 
+
+# Проверка установки 
+tuist version
+```
+
+```swift
+# Создаем папку проекта 
+mkdir TochkaApp 
+cd TochkaApp 
+
+# Инициализация Tuist проекта 
+tuist init --path Tochka
+```
+
+### Настройка Project.swift (главный конфигурационный файл)
+
+Создаем/редактируем `Project.swift`:
+```swift
+import ProjectDesciption
+
+let project = Project(
+	name: "имя проекта",
+	organizationName: "имя организации"
+
+	settings: .settings(
+		base: []
+		configurations: []
+	),
+	targets:[
+		.target(
+			name: "",
+			platform: .,
+			product: .,
+			bundleId: "",
+			deploymentTarget: .,
+			infoPlist: .,
+			sources: [""],
+			resources: [""],
+			dependencies: [
+				.target(name: ""),
+				...
+				.target(name: "")
+			]
+		),
+		...
+		.target(
+			...
+		)
+	]
+)
+```
+
+```swift
+
+# Создаем структуру папок для проекта
+mkdir -p Tochka/Sources
+mkdir -p Tochka/Resources
+
+# Создаем модули
+mkdir -p Modules/Core/Sources
+mkdir -p Modules/DesignSystem/Sources
+mkdir -p Modules/DesignSystem/Resources
+mkdir -p Modules/MapFeature/Sources
+mkdir -p Modules/ActivityFeature/Sources
+mkdir -p Modules/ChatFeature/Sources
+mkdir -p Modules/AuthFeature/Sources
+mkdir -p Modules/ProfileFeature/Sources
+
+# Создаем папки для тестов
+mkdir -p Tests/CoreTests
+mkdir -p Tests/MapFeatureTests
+```
+
+После настройки и создания базовых файлов, переходим к созданию зависимостей для Tuist:
+
+### Создание Package.swift для зависимостей: 
+
+```swift 
+import PackageDescription
+
+let package = Package(
+	name: "имя для зависимостей",
+	platforms: [.iOS(.v15)],
+	products: [],
+	dependencies: [
+		.package(
+			url: "",
+			from: ""
+		),
+		...
+		.package(
+		)
+	],
+	targets: []
+)
+```
+
+
+### Создание Dependencies.swift (для Tuist)
+```swift
+import ProjectDescription
+
+let dependencies = Dependencies( 
+	swiftPackageManager: SwiftPackageManagerDependencies([
+		 .remote( 
+			 url: "https://github.com/firebase/firebase-ios-sdk.git",
+			 requirement: .upToNextMajor(from: "10.18.0") 
+		 ), 
+		 
+		 .remote( 
+			 url: "https://github.com/onevcat/Kingfisher.git", 
+			 requirement: .upToNextMajor(from: "7.10.0") 
+			 ) 
+	 ]), 
+	 platforms: [.iOS] 
+)
 
 
