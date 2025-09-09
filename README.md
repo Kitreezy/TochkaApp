@@ -147,7 +147,7 @@ xcodebuild test -workspace Tochka.xcworkspace -scheme Core
 make test
 
 ```
-
+Для запуска тестов требуется xcode и эмулятор iPhone 16 PRO
 
 ### Типы тестов
 
