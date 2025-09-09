@@ -45,59 +45,16 @@ Tochka/
 
 ### Быстрый старт
 
-1. **Клонирование репозитория**
-   ```bash
-   git clone https://github.com/yourusername/tochka-app.git
-   cd tochka-app
-   ```
-
-2. **Установка Tuist**
-   ```bash
-   brew tap tuist/tuist
-   brew install tuist
-   ```
-
-3. **Генерация проекта**
-   ```bash
-   tuist fetch        # Скачивание зависимостей
-   tuist generate     # Генерация Xcode проекта
-   ```
-
-4. **Настройка Firebase**
-   - Создай проект в [Firebase Console](https://console.firebase.google.com)
-   - Скачай `GoogleService-Info.plist`
-   - Добавь файл в `Tochka/Resources/`
-   - Настрой Firestore Database и Authentication
-
-5. **Обновление Team ID**
-   ```swift
-   // В Project.swift замени YOUR_TEAM_ID на свой
-   "DEVELOPMENT_TEAM": "YOUR_ACTUAL_TEAM_ID"
-   ```
-
-6. **Запуск**
-   ```bash
-   open Tochka.xcworkspace
-   # Выбери схему Tochka и запусти
-   ```
-
-### Настройка окружения разработки
-
-#### SwiftLint и SwiftFormat
 ```bash
-# Установка
-brew install swiftlint swiftformat
+make setup # Полная настройка проекта 
 
-# Автоматический запуск при сборке уже настроен в проекте
+make generate # Генерация Xcode проекта
+
+make test # Запуск тестов
+
+make lint # Проверка стиля кода
 ```
 
-#### Firebase Emulator (для разработки)
-```bash
-npm install -g firebase-tools
-firebase login
-firebase init emulators
-firebase emulators:start
-```
 
 ## 🚀 Разработка
 
@@ -162,42 +119,16 @@ var activities:[Activity]=[]
 func loadActivities(){}}
 ```
 
-### Правила коммитов
-
-```bash
-# Формат: type(scope): description
-
-feat(map): add location search functionality
-fix(chat): resolve message ordering issue
-docs(readme): update installation instructions
-refactor(core): simplify error handling
-test(activity): add unit tests for creation flow
-```
 
 ## 📱 Функциональность
 
-### MVP (Минимально жизнеспособный продукт)
-
+### MVP 
 - [x] ✅ Модульная архитектура проекта
-- [ ] 🗺️ Карта с отображением мест
+- [x] 🗺️ Карта с отображением мест
 - [ ] 📍 Создание активностей в выбранных местах
 - [ ] 💬 Чат внутри активности
-- [ ] 👤 Базовый профиль пользователя
-- [ ] 🔐 Авторизация через Firebase
-
-### Roadmap
-
-#### Фаза 2 (Q2 2025)
-- [ ] 🔔 Push-уведомления
-- [ ] ⭐ Рейтинг пользователей
-- [ ] 📷 Отправка фото в чат
-- [ ] 📅 Интеграция с Apple Calendar
-
-#### Фаза 3 (Q3 2025)
-- [ ] 🏗️ Собственный backend
-- [ ] 🔍 Улучшенный поиск и фильтры
-- [ ] 👥 Система друзей
-- [ ] 📊 Аналитика и метрики
+- [x] 👤 Базовый профиль пользователя
+- [x] 🔐 Авторизация через Firebase
 
 ## 🧪 Тестирование
 
@@ -210,6 +141,13 @@ xcodebuild test -workspace Tochka.xcworkspace -scheme Tochka
 # Конкретный модуль
 xcodebuild test -workspace Tochka.xcworkspace -scheme Core
 ```
+или проще
+```bash
+
+make test
+
+```
+
 
 ### Типы тестов
 
@@ -218,49 +156,6 @@ xcodebuild test -workspace Tochka.xcworkspace -scheme Core
 - **UI Tests**: Автоматизированное тестирование пользовательского интерфейса
 - **Snapshot Tests**: Визуальное тестирование компонентов
 
-## 📦 Сборка и деплой
 
-### Debug сборка
-```bash
-tuist generate
-xcodebuild -workspace Tochka.xcworkspace -scheme Tochka -configuration Debug
-```
 
-### Release сборка
-```bash
-tuist generate
-xcodebuild -workspace Tochka.xcworkspace -scheme Tochka -configuration Release
-```
 
-### Fastlane (планируется)
-```bash
-# Деплой в TestFlight
-fastlane beta
-
-# Деплой в App Store
-fastlane release
-```
-
-## 🤝 Участие в разработке
-
-1. Fork репозитория
-2. Создай feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit изменения (`git commit -m 'feat(scope): add amazing feature'`)
-4. Push в branch (`git push origin feature/amazing-feature`)
-5. Открой Pull Request
-
-## 📄 Лицензия
-
-Этот проект распространяется под лицензией MIT. См. файл `LICENSE` для подробностей.
-
-## 📞 Контакты
-
-- **Разработчик**: [Ваше имя]
-- **Email**: your.email@example.com
-- **Telegram**: @yourusername
-
----
-
-**Статус проекта**: 🚧 В разработке
-
-Последнее обновление: 07.07.2025
