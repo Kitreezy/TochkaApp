@@ -69,7 +69,7 @@ build-release: ## Сборка релизной версии
 
 test: ## Запуск всех тестов
 	@echo "$(YELLOW)🧪 Запуск тестов...$(NC)"
-	xcodebuild test -workspace $(WORKSPACE) -scheme $(SCHEME) -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest'
+	xcodebuild test -workspace $(WORKSPACE) -scheme $(SCHEME) -destination 'platform=iOS Simulator,name=iPhone 16 PRO,OS=latest'
 
 test-unit: ## Запуск только юнит тестов
 	@echo "$(YELLOW)🧪 Запуск юнит тестов...$(NC)"
